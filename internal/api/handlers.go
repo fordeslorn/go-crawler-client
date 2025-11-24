@@ -98,7 +98,7 @@ func GetAvatarHandler(c *gin.Context) {
 	userID := c.Param("pixiv_user_id")
 	baseDir := config.GetBaseDir()
 	// Assuming jpg for simplicity, in real app check file existence
-	avatarPath := filepath.Join(baseDir, ".avatars", userID+".jpg")
+	avatarPath := filepath.Join(baseDir, "crawl-datas", userID, ".avatars", userID+".jpg")
 	c.File(avatarPath)
 }
 

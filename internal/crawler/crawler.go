@@ -65,7 +65,11 @@ func GetUserInfo(userID string, cookie string) (model.UserInfo, error) {
 
 	// Download avatar
 	baseDir := config.GetBaseDir()
-	avatarPath := filepath.Join(baseDir, ".avatars", userID+".jpg")
+	avatarDir := filepath.Join(baseDir, "crawl-datas", userID, ".avatars")
+	if _, err := os.Stat(avatarDir); os.IsNotExist(err) {
+		os.MkdirAll(avatarDir, 0755)
+	}
+	avatarPath := filepath.Join(avatarDir, userID+".jpg")
 	// Download with Referer
 	err = downloadFileWithReferer(apiResp.Body.ImageBig, avatarPath, "https://www.pixiv.net/")
 	if err != nil {
@@ -176,7 +180,7 @@ func StartCrawler(task *service.Task, cookie string) {
 			if task.Mode == "image" {
 				baseDir := config.GetBaseDir()
 				fileName := filepath.Base(imgURL)
-				savePath := filepath.Join(baseDir, ".download_imgs", fileName)
+				savePath := filepath.Join(baseDir, "crawl-datas", task.UserInfo.UserID, ".download_imgs", fileName)
 
 				// Download with Referer
 				err := downloadFileWithReferer(imgURL, savePath, "https://www.pixiv.net/")
@@ -263,9 +267,10 @@ func urlParse(rawurl string) (*url.URL, error) {
 // This function is responsible for writing the in-memory results to disk after the task is completed
 func saveTaskData(task *service.Task) {
 	baseDir := config.GetBaseDir()
+	userDir := filepath.Join(baseDir, "crawl-datas", task.UserInfo.UserID)
 
 	// Save task results
-	resultFile := filepath.Join(baseDir, ".task_data", fmt.Sprintf("task_%s.jsonl", task.ID))
+	resultFile := filepath.Join(userDir, ".task_data", fmt.Sprintf("task_%s.jsonl", task.ID))
 	f, err := os.Create(resultFile)
 	if err == nil {
 		defer f.Close()
@@ -277,7 +282,7 @@ func saveTaskData(task *service.Task) {
 
 	// Save images info
 	if len(task.Images) > 0 {
-		imgFile := filepath.Join(baseDir, ".task_data", fmt.Sprintf("task_%s_images.jsonl", task.ID))
+		imgFile := filepath.Join(userDir, ".task_data", fmt.Sprintf("task_%s_images.jsonl", task.ID))
 		fImg, err := os.Create(imgFile)
 		if err == nil {
 			defer fImg.Close()
@@ -289,7 +294,7 @@ func saveTaskData(task *service.Task) {
 	}
 
 	// Save final summary
-	summaryFile := filepath.Join(baseDir, ".task_results", fmt.Sprintf("task_%s_summary.json", task.ID))
+	summaryFile := filepath.Join(userDir, ".task_results", fmt.Sprintf("task_%s_summary.json", task.ID))
 	fSum, err := os.Create(summaryFile)
 	if err == nil {
 		defer fSum.Close()

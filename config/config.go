@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/viper"
 )
@@ -13,6 +14,7 @@ type Config struct {
 	ProxyHost string `mapstructure:"proxy_host" json:"proxy_host"`
 	ProxyPort int    `mapstructure:"proxy_port" json:"proxy_port"`
 	Port      int    `mapstructure:"port" json:"port"`
+	BaseDir   string `mapstructure:"base_dir" json:"base_dir"`
 }
 
 var GlobalConfig Config
@@ -27,6 +29,7 @@ func LoadConfig() error {
 	viper.SetDefault("proxy_host", "127.0.0.1")
 	viper.SetDefault("proxy_port", 7890)
 	viper.SetDefault("port", 8081)
+	viper.SetDefault("base_dir", "")
 
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
@@ -51,9 +54,25 @@ func LoadConfig() error {
 
 // GetBaseDir get the base directory of the application
 func GetBaseDir() string {
+	if GlobalConfig.BaseDir != "" {
+		return GlobalConfig.BaseDir
+	}
+
 	ex, err := os.Executable()
 	if err != nil {
 		return "."
 	}
-	return filepath.Dir(ex)
+	exPath := filepath.Dir(ex)
+
+	// Heuristic to detect "go run" which builds into a temp directory
+	// On Windows, temp dir is usually in AppData\Local\Temp
+	// We check for "go-build" which is used by go run, or if the path is inside the system temp directory
+	if strings.Contains(exPath, "go-build") || strings.Contains(strings.ToLower(exPath), strings.ToLower(os.TempDir())) {
+		wd, err := os.Getwd()
+		if err == nil {
+			return wd
+		}
+	}
+
+	return exPath
 }

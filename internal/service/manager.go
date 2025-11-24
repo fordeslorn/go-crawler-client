@@ -33,7 +33,19 @@ var GlobalTaskManager *TaskManager
 
 func InitTaskManager() {
 	GlobalTaskManager = &TaskManager{}
-	// Initialize directories
+	// Initialize root directory
+	baseDir := config.GetBaseDir()
+	rootPath := filepath.Join(baseDir, "crawl-datas")
+	if _, err := os.Stat(rootPath); os.IsNotExist(err) {
+		os.MkdirAll(rootPath, 0755)
+	}
+}
+
+func (tm *TaskManager) AddTask(taskID string, mode string, userInfo model.UserInfo) (*Task, error) {
+	baseDir := config.GetBaseDir()
+	userDir := filepath.Join(baseDir, "crawl-datas", userInfo.UserID)
+
+	// Initialize user directories
 	dirs := []string{
 		".avatars",
 		".task_data",
@@ -41,18 +53,14 @@ func InitTaskManager() {
 		".download_imgs",
 		".task_results",
 	}
-	baseDir := config.GetBaseDir()
 	for _, d := range dirs {
-		path := filepath.Join(baseDir, d)
+		path := filepath.Join(userDir, d)
 		if _, err := os.Stat(path); os.IsNotExist(err) {
 			os.MkdirAll(path, 0755)
 		}
 	}
-}
 
-func (tm *TaskManager) AddTask(taskID string, mode string, userInfo model.UserInfo) (*Task, error) {
-	baseDir := config.GetBaseDir()
-	logPath := filepath.Join(baseDir, ".task_logs", fmt.Sprintf("task_%s.log", taskID))
+	logPath := filepath.Join(userDir, ".task_logs", fmt.Sprintf("task_%s.log", taskID))
 
 	// Initialize logger
 	l, err := logger.NewTaskLogger(logPath)
