@@ -147,7 +147,6 @@ func GetConfigHandler(c *gin.Context) {
 			ProxyPort: config.GlobalConfig.ProxyPort,
 		},
 		Client: model.ClientConfig{
-			Port:      config.GlobalConfig.Port,
 			BaseDir:   config.GetBaseDir(),
 			StartedAt: time.Now().Format(time.RFC3339), // This should be app start time
 		},
