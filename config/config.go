@@ -49,7 +49,23 @@ func LoadConfig() error {
 		return fmt.Errorf("unable to decode into struct: %w", err)
 	}
 
+	// Handle relative path for BaseDir
+	if GlobalConfig.BaseDir == "" {
+		cwd, _ := os.Getwd()
+		GlobalConfig.BaseDir = filepath.Join(cwd, "crawl-datas")
+	} else if strings.HasPrefix(GlobalConfig.BaseDir, "./") {
+		cwd, _ := os.Getwd()
+		GlobalConfig.BaseDir = filepath.Join(cwd, GlobalConfig.BaseDir[2:])
+	}
+
 	return nil
+}
+
+// UpdateToken updates the token in the config and saves it to file
+func UpdateToken(token string) error {
+	GlobalConfig.Token = token
+	viper.Set("token", token)
+	return viper.WriteConfig()
 }
 
 // GetBaseDir get the base directory of the application

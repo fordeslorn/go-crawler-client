@@ -33,12 +33,20 @@ func main() {
 	// Init Task Manager (and directories)
 	service.InitTaskManager()
 
+	// Check for Token and Login if missing
+	if config.GlobalConfig.Token == "" {
+		log.Println("Token not found in config. Starting interactive login...")
+		if err := auth.PerformLogin(); err != nil {
+			log.Fatalf("Authentication failed: %v", err)
+		}
+	}
+
 	// Start WebSocket Client
 	if config.GlobalConfig.Token != "" {
 		wsClient := socket.NewClient(config.GlobalConfig.ServerURL, config.GlobalConfig.Token)
 		go wsClient.Connect()
 	} else {
-		log.Println("Warning: No token provided in user_config.json. WebSocket connection disabled. You will not be able to receive tasks from the backend.")
+		log.Println("Warning: No token provided. WebSocket connection disabled.")
 	}
 
 	// Setup Router (Optional, if we want to keep local API)
