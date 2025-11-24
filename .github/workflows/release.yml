@@ -1,0 +1,86 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.25.2'
+
+      - name: Build Windows
+        if: startsWith(github.ref, 'refs/tags/')
+        run: GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -v -o crawler-client-win64-${{ github.ref_name }}.exe ./cmd
+
+      - name: Build Linux
+        if: startsWith(github.ref, 'refs/tags/')
+        run: GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -v -o crawler-client-linux-${{ github.ref_name }} ./cmd
+
+      - name: Get tag info
+        if: startsWith(github.ref, 'refs/tags/')
+        id: tag_info
+        run: |
+          # 获取标签名
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+          
+          # 尝试提取标签消息（仅适用于附注标签）
+          # 使用 git cat-file -p，然后用 awk 忽略所有以 'object', 'type', 'tag', 'tagger' 开头的行
+          # 并在遇到空行时停止，空行后的内容就是标签消息。
+          TAG_MESSAGE=$(
+          git cat-file -p $TAG_NAME 2>/dev/null |
+          awk '
+          # 标记是否已开始打印消息体
+          /^(object|type|tag|tagger) / { next }
+          # 如果遇到空行，则开始打印消息体
+          !p && /^$/ { p=1; next }
+          # 打印消息体
+          p { print }
+          ' |
+            # 移除可能存在的首尾空白行
+            sed -e '/^\s*$/d'
+          )
+          
+          # 如果是轻量标签（或提取失败），设置默认消息
+          if [ -z "$TAG_MESSAGE" ]; then
+          echo "::warning::Tag $TAG_NAME is a lightweight tag or extraction failed. Using default message."
+          # 对于轻量标签，或者获取不到 -m 信息的标签，设置默认值
+          TAG_MESSAGE="Release $TAG_NAME"
+          fi
+          
+          # 设置 GitHub Action 输出变量
+          # 直接使用多行消息
+          echo "tag_message<<EOF" >> $GITHUB_OUTPUT
+          echo "$TAG_MESSAGE" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          
+          # 设置 Release Body (使用标签名和消息组合)
+          echo "release_body<<EOF" >> $GITHUB_OUTPUT
+          echo "**Release $TAG_NAME**" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "$TAG_MESSAGE" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ steps.tag_info.outputs.tag_name }}  # Release 名字就是标签名
+          body: |
+            ${{ steps.tag_info.outputs.release_body }}
+          files: |
+            crawler-client-win64-${{ github.ref_name }}.exe
+            crawler-client-linux-${{ github.ref_name }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
