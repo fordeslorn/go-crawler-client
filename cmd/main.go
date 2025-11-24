@@ -42,7 +42,7 @@ func main() {
 			log.Fatalf("listen: %s\n", err)
 		}
 	}()
-	log.Printf("Server started on port %d", port)
+	log.Printf("\033[34mServer started on port %d\033[0m", port)
 
 	// Register Client
 	go registerClient(port)
@@ -90,5 +90,5 @@ func registerClient(port int) {
 		return
 	}
 
-	log.Printf("Client registered successfully with server at %s", serverURL)
+	log.Printf("\033[32mClient registered successfully with server at %s\033[0m", serverURL)
 }

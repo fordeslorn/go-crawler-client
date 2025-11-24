@@ -48,7 +48,7 @@ func (l *TaskLogger) log(level, format string, v ...any) {
 		l.file.WriteString(logLine + "\n")
 	}
 	// Print to stdout as well for debugging
-	fmt.Println(logLine)
+	// fmt.Println(logLine)
 }
 
 func (l *TaskLogger) GetLogs(tail int) ([]string, int) {
