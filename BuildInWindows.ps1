@@ -2,11 +2,30 @@ $ErrorActionPreference = "Stop"
 
 $output = "dist/crawler-client.exe"
 $src = "./cmd"
+$iconPath = "icon.ico"
+$sysoPath = "cmd/rsrc.syso"
 
 # Ensure output directory exists
 $outputDir = Split-Path $output -Parent
 if ($outputDir -and -not (Test-Path $outputDir)) {
     New-Item -ItemType Directory -Path $outputDir | Out-Null
+}
+
+# Handle Icon
+if (Test-Path $iconPath) {
+    Write-Host "Icon found ($iconPath), preparing resources..." -ForegroundColor Cyan
+    
+    if (-not (Get-Command "rsrc" -ErrorAction SilentlyContinue)) {
+        Write-Host "Installing rsrc tool..." -ForegroundColor Yellow
+        go install github.com/akavel/rsrc@latest
+    }
+
+    # Generate .syso file
+    # -arch amd64 is important for 64-bit builds
+    Write-Host "Generating resource file..."
+    rsrc -ico $iconPath -arch amd64 -o $sysoPath
+} else {
+    Write-Host "No icon.ico found, skipping icon embedding." -ForegroundColor Gray
 }
 
 Write-Host "Compiling for Windows (amd64)..." -ForegroundColor Cyan
@@ -19,7 +38,14 @@ $env:GOARCH = "amd64"
 # Build command
 # -ldflags="-s -w": Strip debug information to reduce size
 # -trimpath: Remove file system paths from executable
-go build -ldflags="-s -w" -trimpath -o $output $src
+try {
+    go build -ldflags="-s -w" -trimpath -o $output $src
+} finally {
+    # Cleanup .syso file to keep source clean
+    if (Test-Path $sysoPath) {
+        Remove-Item $sysoPath
+    }
+}
 
 if ($LASTEXITCODE -eq 0) {
     Write-Host "Build success!" -ForegroundColor Green

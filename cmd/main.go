@@ -12,6 +12,7 @@ import (
 
 	"go-crawler-client/config"
 	"go-crawler-client/internal/api"
+	"go-crawler-client/internal/auth"
 	"go-crawler-client/internal/model"
 	"go-crawler-client/internal/service"
 
@@ -22,6 +23,17 @@ func main() {
 	// Load Config
 	if err := config.LoadConfig(); err != nil {
 		log.Fatalf("Failed to load config: %v", err)
+	}
+
+	// Init Token Validator
+	var err error
+	api.TokenValidator, err = auth.NewTokenValidator("public.pem")
+	if err != nil {
+		log.Printf("Warning: Failed to load public key: %v. Token validation will fail.", err)
+		// We might want to exit here if security is mandatory
+		// log.Fatalf("Failed to initialize token validator: %v", err)
+	} else {
+		log.Println("Token validator initialized successfully.")
 	}
 
 	// Init Task Manager (and directories)

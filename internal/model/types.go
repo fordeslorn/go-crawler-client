@@ -4,6 +4,7 @@ package model
 type StartTaskRequest struct {
 	PixivUserID string `json:"pixiv_user_id" binding:"required"`
 	Cookie      string `json:"cookie" binding:"required"`
+	Token       string `json:"token" binding:"required"` // Added Token field
 }
 
 // UserInfo 用户信息

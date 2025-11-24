@@ -4,9 +4,11 @@ import (
 	"net/http"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"go-crawler-client/config"
+	"go-crawler-client/internal/auth"
 	"go-crawler-client/internal/crawler"
 	"go-crawler-client/internal/model"
 	"go-crawler-client/internal/service"
@@ -14,6 +16,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
+
+var TokenValidator *auth.TokenValidator
 
 func StartTaskHandler(c *gin.Context) {
 	mode := c.Param("mode")
@@ -24,7 +28,32 @@ func StartTaskHandler(c *gin.Context) {
 
 	var req model.StartTaskRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		// Customize error message for missing Token
+		if strings.Contains(err.Error(), "'Token' failed on the 'required' tag") {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Missing required field: token. Please initiate tasks via the backend API."})
+			return
+		}
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body: " + err.Error()})
+		return
+	}
+
+	// Validate Token
+	if TokenValidator != nil {
+		claims, err := TokenValidator.ValidateTaskToken(req.Token)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token: " + err.Error()})
+			return
+		}
+		// Optional: Check if claims match request
+		if claims.UserID != "" && claims.UserID != req.PixivUserID {
+			// Note: In the backend we used the system UserID for the token, but here we are crawling a PixivUserID.
+			// If the token was bound to a specific PixivUserID, we should check it.
+			// For now, we just verify the token is valid and issued by our backend.
+		}
+	} else {
+		// If validator is not initialized (e.g. missing public key), we might want to fail safe or warn
+		// For security, better to fail if we expect auth
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Server authentication configuration error"})
 		return
 	}
 
