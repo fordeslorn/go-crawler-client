@@ -1,0 +1,44 @@
+$ErrorActionPreference = "Stop"
+
+$output = "dist/crawler-client.exe"
+$src = "./cmd"
+
+# Ensure output directory exists
+$outputDir = Split-Path $output -Parent
+if ($outputDir -and -not (Test-Path $outputDir)) {
+    New-Item -ItemType Directory -Path $outputDir | Out-Null
+}
+
+Write-Host "Compiling for Windows (amd64)..." -ForegroundColor Cyan
+
+# Set environment variables
+$env:CGO_ENABLED = "0"
+$env:GOOS = "windows"
+$env:GOARCH = "amd64"
+
+# Build command
+# -ldflags="-s -w": Strip debug information to reduce size
+# -trimpath: Remove file system paths from executable
+go build -ldflags="-s -w" -trimpath -o $output $src
+
+if ($LASTEXITCODE -eq 0) {
+    Write-Host "Build success!" -ForegroundColor Green
+    $item = Get-Item $output
+    $sizeMB = $item.Length / 1MB
+    Write-Host ("Output file: {0}" -f $item.FullName)
+    Write-Host ("File size: {0:N2} MB" -f $sizeMB)
+    
+    # Check for UPX
+    if (Get-Command "upx" -ErrorAction SilentlyContinue) {
+        Write-Host "UPX detected, compressing..." -ForegroundColor Cyan
+        upx --best $output
+        $newItem = Get-Item $output
+        $newSizeMB = $newItem.Length / 1MB
+        Write-Host ("Compressed size: {0:N2} MB (Reduced by {1:P0})" -f $newSizeMB, (1 - $newSizeMB/$sizeMB)) -ForegroundColor Green
+    } else {
+        Write-Host "Tip: Install UPX (https://github.com/upx/upx) to further reduce binary size." -ForegroundColor Yellow
+    }
+} else {
+    Write-Host "Build failed." -ForegroundColor Red
+    exit 1
+}

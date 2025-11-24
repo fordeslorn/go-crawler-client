@@ -32,6 +32,7 @@ go.work.sum
 .vscode/
 
 # Other
+dist
 crawler.md
 user_config.json
 crawl-datas
