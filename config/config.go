@@ -11,9 +11,9 @@ import (
 
 type Config struct {
 	ServerURL string `mapstructure:"server_url" json:"server_url"`
+	Token     string `mapstructure:"token" json:"token"` // Auth Token for WebSocket
 	ProxyHost string `mapstructure:"proxy_host" json:"proxy_host"`
 	ProxyPort int    `mapstructure:"proxy_port" json:"proxy_port"`
-	Port      int    `mapstructure:"port" json:"port"`
 	BaseDir   string `mapstructure:"base_dir" json:"base_dir"`
 }
 
@@ -26,9 +26,9 @@ func LoadConfig() error {
 
 	// Set defaults
 	viper.SetDefault("server_url", "http://localhost:8080")
+	viper.SetDefault("token", "")
 	viper.SetDefault("proxy_host", "127.0.0.1")
 	viper.SetDefault("proxy_port", 7890)
-	viper.SetDefault("port", 8081)
 	viper.SetDefault("base_dir", "")
 
 	if err := viper.ReadInConfig(); err != nil {
@@ -49,7 +49,23 @@ func LoadConfig() error {
 		return fmt.Errorf("unable to decode into struct: %w", err)
 	}
 
+	// Handle relative path for BaseDir
+	if GlobalConfig.BaseDir == "" {
+		cwd, _ := os.Getwd()
+		GlobalConfig.BaseDir = filepath.Join(cwd, "crawl-datas")
+	} else if strings.HasPrefix(GlobalConfig.BaseDir, "./") {
+		cwd, _ := os.Getwd()
+		GlobalConfig.BaseDir = filepath.Join(cwd, GlobalConfig.BaseDir[2:])
+	}
+
 	return nil
+}
+
+// UpdateToken updates the token in the config and saves it to file
+func UpdateToken(token string) error {
+	GlobalConfig.Token = token
+	viper.Set("token", token)
+	return viper.WriteConfig()
 }
 
 // GetBaseDir get the base directory of the application

@@ -49,6 +49,33 @@ try {
 
 if ($LASTEXITCODE -eq 0) {
     Write-Host "Build success!" -ForegroundColor Green
+
+    # Copy necessary files to dist
+    Write-Host "Copying config and key files..." -ForegroundColor Cyan
+    
+    if (Test-Path "public.pem") {
+        Copy-Item "public.pem" -Destination $outputDir
+        Write-Host "  [+] public.pem copied" -ForegroundColor Green
+    } else {
+        Write-Host "  [!] public.pem not found! Client may fail to validate tokens." -ForegroundColor Red
+    }
+
+    if (Test-Path "user_config.json") {
+        Copy-Item "user_config.json" -Destination $outputDir
+        Write-Host "  [+] user_config.json copied" -ForegroundColor Green
+    } else {
+        # Create a default config if not exists
+        $defaultConfig = @{
+            server_url = "http://localhost:8080"
+            token = ""
+            proxy_host = "127.0.0.1"
+            proxy_port = 7890
+            base_dir = ""
+        } | ConvertTo-Json
+        $defaultConfig | Out-File -FilePath "$outputDir/user_config.json" -Encoding utf8
+        Write-Host "  [+] Created default user_config.json" -ForegroundColor Green
+    }
+
     $item = Get-Item $output
     $sizeMB = $item.Length / 1MB
     Write-Host ("Output file: {0}" -f $item.FullName)
