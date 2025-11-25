@@ -58,6 +58,11 @@ func (c *Client) Connect() {
 		u.Scheme = "ws"
 	}
 
+	// Add token to query params as a fallback/primary method for WS
+	q := u.Query()
+	q.Set("token", c.Token)
+	u.RawQuery = q.Encode()
+
 	headers := http.Header{}
 	headers.Add("Authorization", "Bearer "+c.Token)
 
