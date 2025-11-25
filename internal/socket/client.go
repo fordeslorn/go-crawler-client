@@ -135,6 +135,8 @@ func (c *Client) handleMessage(data []byte) {
 		c.handleGetConfig(msg.ID)
 	case "get_avatar":
 		c.handleGetAvatar(msg.ID, msg.Payload)
+	case "get_image":
+		c.handleGetImage(msg.ID, msg.Payload)
 	default:
 		log.Println("Unknown message type:", msg.Type)
 	}
@@ -275,6 +277,50 @@ func (c *Client) handleGetAvatar(reqID string, payload json.RawMessage) {
 	data, err := os.ReadFile(avatarPath)
 	if err != nil {
 		c.sendResponse(reqID, map[string]string{"error": "Failed to read avatar"})
+		return
+	}
+
+	// Encode to Base64
+	encoded := base64.StdEncoding.EncodeToString(data)
+
+	c.sendResponse(reqID, map[string]string{"data": encoded})
+}
+
+func (c *Client) handleGetImage(reqID string, payload json.RawMessage) {
+	var req struct {
+		PixivUserID string `json:"pixiv_user_id"`
+		Filename    string `json:"filename"`
+	}
+	if err := json.Unmarshal(payload, &req); err != nil {
+		return
+	}
+
+	baseDir := config.GetBaseDir()
+	// Path: crawl-datas/<uid>/.download_imgs/<filename>
+	// Note: The user mentioned "crawl-datas/crawl-datas/..." in their example.
+	// But based on handleGetAvatar which uses "crawl-datas/<uid>/.avatars",
+	// I assume the structure is consistent: "crawl-datas/<uid>/.download_imgs".
+	// If the user has a nested "crawl-datas" folder, it might be because GetBaseDir() returns a path ending in crawl-datas?
+	// Or maybe they just created a folder named crawl-datas inside crawl-datas.
+	// I will stick to the pattern used in handleGetAvatar.
+	imagePath := filepath.Join(baseDir, "crawl-datas", req.PixivUserID, ".download_imgs", req.Filename)
+
+	// Check if file exists
+	if _, err := os.Stat(imagePath); os.IsNotExist(err) {
+		// Try checking if there is a double crawl-datas folder as per user example, just in case
+		imagePath2 := filepath.Join(baseDir, "crawl-datas", "crawl-datas", req.PixivUserID, ".download_imgs", req.Filename)
+		if _, err2 := os.Stat(imagePath2); os.IsNotExist(err2) {
+			c.sendResponse(reqID, map[string]string{"error": "Image not found"})
+			return
+		} else {
+			imagePath = imagePath2
+		}
+	}
+
+	// Read file
+	data, err := os.ReadFile(imagePath)
+	if err != nil {
+		c.sendResponse(reqID, map[string]string{"error": "Failed to read image"})
 		return
 	}
 
