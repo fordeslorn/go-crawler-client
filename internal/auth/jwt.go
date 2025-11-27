@@ -3,12 +3,15 @@ package auth
 import (
 	"crypto/rsa"
 	"crypto/x509"
+	_ "embed"
 	"encoding/pem"
 	"errors"
-	"os"
 
 	"github.com/golang-jwt/jwt/v5"
 )
+
+//go:embed public.pem
+var publicKeyPEM []byte
 
 // TaskClaims defines the custom claims for crawler tasks
 type TaskClaims struct {
@@ -23,28 +26,22 @@ type TokenValidator struct {
 }
 
 // NewTokenValidator creates a new TokenValidator
-func NewTokenValidator(publicKeyPath string) (*TokenValidator, error) {
+func NewTokenValidator() (*TokenValidator, error) {
 	tv := &TokenValidator{}
 
 	// Load Public Key
-	if publicKeyPath != "" {
-		pubBytes, err := os.ReadFile(publicKeyPath)
-		if err != nil {
-			return nil, err
-		}
-		block, _ := pem.Decode(pubBytes)
-		if block == nil {
-			return nil, errors.New("failed to parse PEM block containing the public key")
-		}
-		pub, err := x509.ParsePKIXPublicKey(block.Bytes)
-		if err != nil {
-			return nil, err
-		}
-		var ok bool
-		tv.publicKey, ok = pub.(*rsa.PublicKey)
-		if !ok {
-			return nil, errors.New("not an RSA public key")
-		}
+	block, _ := pem.Decode(publicKeyPEM)
+	if block == nil {
+		return nil, errors.New("failed to parse PEM block containing the public key")
+	}
+	pub, err := x509.ParsePKIXPublicKey(block.Bytes)
+	if err != nil {
+		return nil, err
+	}
+	var ok bool
+	tv.publicKey, ok = pub.(*rsa.PublicKey)
+	if !ok {
+		return nil, errors.New("not an RSA public key")
 	}
 
 	return tv, nil

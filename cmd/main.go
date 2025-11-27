@@ -21,7 +21,7 @@ func main() {
 
 	// Init Token Validator
 	var err error
-	api.TokenValidator, err = auth.NewTokenValidator("public.pem")
+	api.TokenValidator, err = auth.NewTokenValidator()
 	if err != nil {
 		log.Printf("Warning: Failed to load public key: %v. Token validation will fail.", err)
 		// We might want to exit here if security is mandatory

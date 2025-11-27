@@ -51,14 +51,9 @@ if ($LASTEXITCODE -eq 0) {
     Write-Host "Build success!" -ForegroundColor Green
 
     # Copy necessary files to dist
-    Write-Host "Copying config and key files..." -ForegroundColor Cyan
+    Write-Host "Copying config files..." -ForegroundColor Cyan
     
-    if (Test-Path "public.pem") {
-        Copy-Item "public.pem" -Destination $outputDir
-        Write-Host "  [+] public.pem copied" -ForegroundColor Green
-    } else {
-        Write-Host "  [!] public.pem not found! Client may fail to validate tokens." -ForegroundColor Red
-    }
+    # public.pem is now embedded, no need to copy
 
     if (Test-Path "user_config.json") {
         Copy-Item "user_config.json" -Destination $outputDir
